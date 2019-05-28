@@ -31,6 +31,6 @@ Output should match the file
  *  QC_outputExampleSkylineOutput.csv
 
 
-#  Acknowledgements
+# Acknowledgements
 This code was vetted by Katherine Heal.
 
