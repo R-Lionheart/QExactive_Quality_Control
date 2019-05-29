@@ -2,21 +2,22 @@
 
 ## Note that the csv can have blanks but not characters in 
 ## the RT, MZ, and Area columns
-
 ## Load needed libraries ------
-library("plyr")
-library("reshape2")
-library(tidyr)
-library(readr)
-library(stringr)
-library(GGally)
-library(dplyr)
 
-## Load you data here---------
+library(dplyr)
+library(GGally)
+library(githubinstall)
+library("plyr")
+library(readr)
+library("reshape2")
+library(stringr)
+library(tidyr)
+
+## Load your data here---------
 # filename <- "HILICNeg_QE_SkylineResults.csv"
 filename <- "HILICPos_QE_SkylineResults.csv"
 
-areas.raw  <- read.csv(filename, na.strings = "#N/A", stringsAsFactors = F)
+areas.raw <- read.csv(filename, na.strings = "#N/A", stringsAsFactors = F)
 
 ## ditch compounds that are missing data but are also not present and are confusing the code:
 areas.raw <- areas.raw %>% 
