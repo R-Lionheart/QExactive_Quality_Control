@@ -6,40 +6,57 @@
 
 # Description of code -----------------------------------------------------
 
-# This code takes one file input (the output of a Skyline processing pipeline) and reads in the csv, accounting for NA values.
+# This code takes one file input (the output of a Skyline processing pipeline) and applies a custom quality control.
+
+# Reads in the csv, accounting for NA values.
 # Remove particular compounds.
 # Create one dataframe of just internal standards by extracting Protein.Names that include Internal standards, and rename original dataframe to reflect that data has been extracted.
 # Set numerical values for the parameters of the quality control, including suggestions.
-# Identify run types by string splitting between standards, samples, blanks and pools.
-# Change variable types to factors or numeric and add variables for standards and blanks.
-# Create range of retention times and blank ranges. Include pooled samples in "sample" list.
-# Set up Retention Time range matrix and obtain sample RTs.
-# Make new variable for matrix format, and add areas, heights, ion ratios.
+# Identify run types by string splitting between standards, samples, blanks and pools, and renaming them to "std", "blk", "smp", "poo"
+# Change variable types to factors or numeric and create variables for standard and blank runs. Split areas.raw.noIS by sample type.
+# Create range of retention times and blank ranges. Include pooled samples in "sample" list. Isolate compounds and replicates. Create dataframes of samples grouped by compound.
+# Set up acceptable Retention Time range matrix using predetermined RT.flex, and obtain sample RTs.
+# Make new table for matrix format.
+# Calculate signal to noise ratio and add areas, heights, ion ratios, names, etc by 
 # Add warning if peak height is overloaded.
 # Check for peak height.
 # Check for signal to noise.
 # Check for blank.
 # Check for retention time range.
-# Readd data from internal standards.
+# Read data from internal standards.
 # Attach blank data to output.
 # Add comment to output and re-save as a new csv.
 
-# TODO (rlionheart): Are the same compounds always removed?
+# TODO (rlionheart): Are the same compounds always removed? 
 # TODO (rlionheart): Is ppm parts per million?
-# TODO (lionhearts): What is happening in the t1, this.one area under ID run types?
-# TODO (lionhearts): What is the area.split, as it doesn't seem to be a function?
+# TODO (rlionheart): When creating int.stds.data, should the filter parameter be a regex to account for various inputs indicating internal standards?
+# TODO (rlionheart): No Mass.Error.PPM column to add to areas.raw.noIS? Also presents problems in lines 167 - 178.
+
+# TODO (lionhearts): What specifically is happening in the ID run type section, as well as the RT.matrix section? 
+# TODO (lionhearts): Where is the range coming from in RT.range under Range of Retention Times?
+# TODO (lionhearts): The if statement on line 137 seems strange. Why pull "poo" from run.type.options?
+
+# if(!require(ggplot2)){install.packages("dplyr",
+#                                        "GGally", 
+#                                        "here",
+#                                        "plyr",
+#                                        "readr",
+#                                        "reshape2",
+#                                        "stringr",
+#                                        "tidyr",
+#                                        "tidyverse")}
 
 
 ## Load needed libraries ------
 library(dplyr)
 library(GGally)
-library(githubinstall)
 library(here)
 library("plyr")
 library(readr)
 library("reshape2")
 library(stringr)
 library(tidyr)
+library(tidyverse)
 
 ## Load your data here---------
 # filename <- "HILICNeg_QE_SkylineResults.csv"
@@ -47,15 +64,16 @@ library(tidyr)
 areas.raw <- read.csv(here::here("datafiles", "ExampleSkylineOutput.csv"), na.strings = "#N/A", stringsAsFactors = FALSE)
 
 ## Filter compounds --------------------------------------------------------
-# Remove ompounds that are missing data but are also not present and are confusing the code:
+# Remove compounds that are missing data but are also not present and are confusing the code:
 areas.raw <- areas.raw %>% 
      filter(Precursor.Ion.Name != "GTP",
             Precursor.Ion.Name != "Argininosuccinic Acid",
             Precursor.Ion.Name != "Cys-Gly")
 
 ## Extract internal standards data ------------------
-int.stds.data <- areas.raw %>% filter(Protein.Name == "Internal Stds_neg")
-areas.raw.noIS <- areas.raw #%>% filter(Protein.Name!="Internal Stds_neg")
+int.stds.data <- areas.raw %>% 
+  filter(Protein.Name == "Internal Stds_neg")
+areas.raw.noIS <- areas.raw 
 
 ## Set the parameters for the QC ----------------------------------------
 # Pick overload value. 
@@ -85,16 +103,16 @@ ppm.thresh <- 7
 ## ID run types ---------------------------
 # Standards (std), Samples (smp), Blanks (blk), Pooled (poo)
 t1 <- strsplit(areas.raw.noIS$Replicate.Name, "[_]")
-type <- vector()
+run.type <- vector()
 for (i in 1:length(t1)) {
      this.one = t1[[i]][2]
-     type <- c(type, this.one)  
+     run.type <- c(run.type, this.one)  
 }
-type <- tolower(type)
+run.type <- tolower(run.type)
 
 
 ## Change variable types ---------------------------------------------------
-areas.raw.noIS$sample.type        <- as.factor(type)
+areas.raw.noIS$sample.type        <- as.factor(run.type)
 areas.raw.noIS$Precursor.Ion.Name <- as.factor(areas.raw.noIS$Precursor.Ion.Name)
 areas.raw.noIS$Area               <- as.numeric(areas.raw.noIS$Area)
 areas.raw.noIS$Retention.Time     <- as.numeric(areas.raw.noIS$Retention.Time)
@@ -107,23 +125,26 @@ blkRows <- areas.raw.noIS$sample.type == "blk"
 
 areas.split <- split(areas.raw.noIS, areas.raw.noIS$sample.type)
 
-type.options <- names(areas.split)
+run.type.options <- names(areas.split)
 
 cmpd.blk.list <- split(areas.split[["blk"]],
                        areas.split[["blk"]]$Precursor.Ion.Name)
 
 ## Check the range of Retention Times and ion ratio in Standards ---------------------
 # Range of Retention Times (RTs) and pooled sample inclusion
-RT.range <- sapply(split(areas.split[["std"]]$Retention.Time, areas.split[["std"]]$Precursor.Ion.Name),
-                   range, na.rm = T)
+RT.range <- sapply(split(areas.split[["std"]]$Retention.Time, 
+                         areas.split[["std"]]$Precursor.Ion.Name),
+                         range, na.rm = T)
 
-blk.range <- sapply(split(areas.split[["blk"]]$Area, areas.split[["blk"]]$Precursor.Ion.Name),
-                    range, na.rm = T) 
+blk.range <- sapply(split(areas.split[["blk"]]$Area, 
+                          areas.split[["blk"]]$Precursor.Ion.Name),
+                          range, na.rm = T) 
+
 samp.data <- areas.split[["smp"]]
 blank.data <- areas.split[["blk"]]
 
-# If there are pooled samples, include them in the 'sample' list
-if (any(type.options == "poo")) {
+# If there are pooled samples, include them in the 'sample' list so only blanks and standards are excluded.
+if (any(run.type.options == "poo")) {
      poo.data <- areas.split[["poo"]]
      samp.data <- rbind(samp.data, poo.data)
 }
@@ -149,7 +170,6 @@ for (i in 1:length(cmpds)) {
 
 ## Convert short format matrix to long form ----------------------
 output <- melt(RT.matrix, value.name = "Retention Time")
-
 colnames(output) <- c("Replicate.Name", "Compound.Name", "Retention.Time")
 
 ## Add areas, heights, and ion ratios to output ----------------------
@@ -158,8 +178,7 @@ samp.data$S.N <- ((samp.data$Area + samp.data$Background) / samp.data$Background
 output <- full_join(output, samp.data[, c("Replicate.Name", "Precursor.Ion.Name",
                                          "Area", "Height", "Background",
                                          "Mass.Error.PPM", "S.N")], 
-                    by = c("Replicate.Name",
-                           "Compound.Name" = "Precursor.Ion.Name"))
+                    by = c("Replicate.Name", "Compound.Name" = "Precursor.Ion.Name"))
 output <- output %>%
      rename(ppm = Mass.Error.PPM) %>%
      mutate(Notes = "",
@@ -169,7 +188,7 @@ output <- output %>%
 
 ## Is it overloaded? ---------------------------------------
 # Check peak height, if it is > max.height then keep the area data but make a note that it may be overloaded.
-for (i in 1:nrow(output)){
+for (i in 1:nrow(output)) {
      if (!is.na(output$Height[i]) & output$Height[i] > max.height) {
           output$Notes[i] <- paste(output$Notes[i], "overloaded?", sep = "")
      }
@@ -206,8 +225,7 @@ for (i in 1:nrow(output)) {
 # If area is not much greater than blank, throw it out!
 for (i in 1:nrow(output)) {
      key <- as.character(output$Compound.Name[i])
-     if (!is.na(output$Area[i]) & 
-         (output$Area[i] * blk.thresh) < mean(blk.range[, key])) {
+     if (!is.na(output$Area[i]) & (output$Area[i] * blk.thresh) < mean(blk.range[, key])) {
           output$Notes[i] <- paste(output$Notes[i], "comparable to blank", sep = "")
           output$AreaBlkSub[i] <- output$Area[i] - mean(blk.range[, key])
           output$BlkRatio[i] <-  mean(blk.range[, key]) / output$Area[i]
@@ -218,8 +236,7 @@ for (i in 1:nrow(output)) {
 ## RT range check --------------
 for (i in 1:nrow(output)) { 
      key <- as.character(output$Compound.Name[i])
-     if (!is.na(output$Retention.Time[i]) & 
-         output$Retention.Time[i] > max(RT.ok[ , key])) {
+     if (!is.na(output$Retention.Time[i]) & output$Retention.Time[i] > max(RT.ok[ , key])) {
          output$Notes[i] <- paste(output$Notes[i], "Bad RT", sep = "")
          output$Area[i] <- NA
      }
