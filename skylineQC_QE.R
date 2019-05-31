@@ -12,6 +12,7 @@
 # Remove particular compounds.
 # Create one dataframe of just internal standards by extracting Protein.Names that include Internal standards, and rename original dataframe to reflect that data has been extracted.
 # Set numerical values for the parameters of the quality control, including suggestions.
+
 # Identify run types by string splitting between standards, samples, blanks and pools, and renaming them to "std", "blk", "smp", "poo"
 # Change variable types to factors or numeric and create variables for standard and blank runs. Split areas.raw.noIS by sample type.
 # Create range of retention times and blank ranges. Include pooled samples in "sample" list. Isolate compounds and replicates. Create dataframes of samples grouped by compound.
@@ -51,11 +52,11 @@ main <- function() {
   # stopifnot(action %in% c("--filter", "--extract"))
   
   if (length(filename) == 0) {
-    process(file("stdin"))
+    filtering(file("stdin"))
   } else {
     for (f in filename) {
       QC_parameters()
-      process(f)
+      filtering(f)
     }
   }
 }
@@ -91,77 +92,48 @@ QC_parameters <- function() {
   }
 }
 
-process <- function(filename) {
-  areas.raw <- read.csv(file = filename, header = TRUE) %>%
+filtering <- function(filename) {
+  areas.raw <- read.csv(file = filename, header = TRUE, na.strings = "#N/A", stringsAsFactors = F) %>%
     filter(Precursor.Ion.Name != "GTP",
            Precursor.Ion.Name != "Argininosuccinic Acid",
            Precursor.Ion.Name != "Cys-Gly")
   areas.raw.noIS <- areas.raw %>%
     filter(!Protein.Name == "Internal Stds_neg")
+  
   print(head(areas.raw))
   print(head(areas.raw.noIS))
 }
 
+
 main()
 
 
+## Identify run types ---------------------------
+# Standards (std), Samples (smp), Blanks (blk), Pooled (poo)
+ID_runtypes <- function() {
+  run.type <- tolower(str_extract(areas.raw.noIS$Replicate.Name, "(?<=_)[^_]+(?=_)"))
+  print(head(run.type))
+}
 
-# ## Set the parameters for the QC ----------------------------------------
-# # Pick overload value. 
-# # QE suggestion: 5e8
-# max.height <- 5.0e8
-# 
-# # Pick the minimum height to be counted as a 'real' peak.
-# # QE suggestion: HILIC - 1000, Cyano - 5000
-# min.height <- 1000
-# 
-# # Pick retention time (RT) flexibility.
-# # QE suggestion: +/- 0.4 min for HILIC, +/- 0.2 min for Cyano. 
-# RT.flex <- 0.4
-# 
-# # Pick signal size comparison between sample and blank to merit inclusion.
-# # QE suggestion: +/- 20%
-# blk.thresh <- 0.5
-# 
-# # Pick acceptable signal to noise ratio value. Note: broader peaks create more background noise.
-# # QE suggestion: 5 for Cyano, 4 for HILIC. Negotiable.
-# SN.thresh <- 4
-# 
-# # Pick an absolute value for a cutoff for parts per million (ppm)
-# # QE suggestion: 7
-# ppm.thresh <- 7
+## Change variable types ---------------------------------------------------
+areas.raw.noIS$sample.type        <- as.factor(run.type)
+areas.raw.noIS$Precursor.Ion.Name <- as.factor(areas.raw.noIS$Precursor.Ion.Name)
+areas.raw.noIS$Area               <- as.numeric(areas.raw.noIS$Area)
+areas.raw.noIS$Retention.Time     <- as.numeric(areas.raw.noIS$Retention.Time)
+areas.raw.noIS$Background         <- as.numeric(areas.raw.noIS$Background)
+areas.raw.noIS$Height             <- as.numeric(areas.raw.noIS$Height)
+areas.raw.noIS$Mass.Error.PPM     <- as.numeric(areas.raw.noIS$Mass.Error.PPM)
 
-# 
-# ## ID run types ---------------------------
-# # Standards (std), Samples (smp), Blanks (blk), Pooled (poo)
-# t1 <- strsplit(areas.raw.noIS$Replicate.Name, "[_]")
-# run.type <- vector()
-# for (i in 1:length(t1)) {
-#      this.one = t1[[i]][2]
-#      run.type <- c(run.type, this.one)  
-# }
-# run.type <- tolower(run.type)
-# 
-# 
-# ## Change variable types ---------------------------------------------------
-# areas.raw.noIS$sample.type        <- as.factor(run.type)
-# areas.raw.noIS$Precursor.Ion.Name <- as.factor(areas.raw.noIS$Precursor.Ion.Name)
-# areas.raw.noIS$Area               <- as.numeric(areas.raw.noIS$Area)
-# areas.raw.noIS$Retention.Time     <- as.numeric(areas.raw.noIS$Retention.Time)
-# areas.raw.noIS$Background         <- as.numeric(areas.raw.noIS$Background)
-# areas.raw.noIS$Height             <- as.numeric(areas.raw.noIS$Height)
-# areas.raw.noIS$Mass.Error.PPM     <- as.numeric(areas.raw.noIS$Mass.Error.PPM)
-# 
-# stdRows <- areas.raw.noIS$sample.type == "std"
-# blkRows <- areas.raw.noIS$sample.type == "blk"
-# 
-# areas.split <- split(areas.raw.noIS, areas.raw.noIS$sample.type)
-# 
-# run.type.options <- names(areas.split)
-# 
-# cmpd.blk.list <- split(areas.split[["blk"]],
-#                        areas.split[["blk"]]$Precursor.Ion.Name)
-# 
+stdRows <- areas.raw.noIS$sample.type == "std"
+blkRows <- areas.raw.noIS$sample.type == "blk"
+
+areas.split <- split(areas.raw.noIS, areas.raw.noIS$sample.type)
+
+run.type.options <- names(areas.split)
+
+cmpd.blk.list <- split(areas.split[["blk"]],
+                       areas.split[["blk"]]$Precursor.Ion.Name)
+ 
 # ## Check the range of Retention Times and ion ratio in Standards ---------------------
 # # Range of Retention Times (RTs) and pooled sample inclusion
 # RT.range <- sapply(split(areas.split[["std"]]$Retention.Time, 
