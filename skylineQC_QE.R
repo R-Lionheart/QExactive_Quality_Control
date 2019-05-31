@@ -54,8 +54,40 @@ main <- function() {
     process(file("stdin"))
   } else {
     for (f in filename) {
+      QC_parameters()
       process(f)
     }
+  }
+}
+
+QC_parameters <- function() {
+  cat("Pick an overload value (QE suggestion: 5.0e8): ");
+  max.height <- readLines("stdin", n = 1);
+  cat("Pick the minimum height to be counted as a 'real' peak (QE suggestion: HILIC - 1000, Cyano - 5000): " );
+  min.height <- readLines("stdin", n = 1);
+  cat("Pick retention time (RT) flexibility (QE suggestion: +/- 0.4 min for HILIC, +/- 0.2 min for Cyano): ")
+  RT.flex <- readLines("stdin", n = 1);
+  cat("Pick signal size comparison between sample and blank to merit inclusion (QE suggestion: +/- 20%): ")
+  blk.thresh <- readLines("stdin", n = 1);
+  cat("Pick acceptable signal to noise ratio value. Note: broader peaks create more background noise(QE suggestion: 5 for Cyano, 4 for HILIC. Negotiable.): ")
+  SN.thresh <- readLines("stdin", n = 1);
+  cat("Pick an absolute value for a cutoff for parts per million (ppm) (QE suggestion: 7): ")
+  ppm.thresh <- readLines("stdin", n = 1);
+  
+  cat("Your max height value is:", max.height, "\n")
+  cat("Your minimum height value is:", min.height, "\n")
+  cat("Your retention time flexibility value is:", RT.flex, "\n")
+  cat("Your blank threshold value is:", blk.thresh, "\n")
+  cat("Your signal to noise ratio value is:", SN.thresh, "\n")
+  cat("Your parts per million value is:", ppm.thresh, "\n")
+  
+  cat("Ready to move on? (Y/N):" );
+  answer <- readLines("stdin", n = 1);
+  if (regexpr(answer, 'y', ignore.case = TRUE) == 1) {
+    continue = TRUE
+  } else if (regexpr(answer, 'n', ignore.case = TRUE) == 1) {
+    cat("Ok, let's try again!")
+    break
   }
 }
 
@@ -66,38 +98,38 @@ process <- function(filename) {
            Precursor.Ion.Name != "Cys-Gly")
   areas.raw.noIS <- areas.raw %>%
     filter(!Protein.Name == "Internal Stds_neg")
-  print(areas.raw)
-  print(areas.raw.noIS)
+  print(head(areas.raw))
+  print(head(areas.raw.noIS))
 }
 
 main()
 
 
 
-## Set the parameters for the QC ----------------------------------------
-# Pick overload value. 
-# QE suggestion: 5e8
-max.height <- 5.0e8
-
-# Pick the minimum height to be counted as a 'real' peak.
-# QE suggestion: HILIC - 1000, Cyano - 5000
-min.height <- 1000
-
-# Pick retention time (RT) flexibility.
-# QE suggestion: +/- 0.4 min for HILIC, +/- 0.2 min for Cyano. 
-RT.flex <- 0.4
-
-# Pick signal size comparison between sample and blank to merit inclusion.
-# QE suggestion: +/- 20%
-blk.thresh <- 0.5
-
-# Pick acceptable signal to noise ratio value. Note: broader peaks create more background noise.
-# QE suggestion: 5 for Cyano, 4 for HILIC. Negotiable.
-SN.thresh <- 4
-
-# Pick an absolute value for a cutoff for parts per million (ppm)
-# QE suggestion: 7
-ppm.thresh <- 7
+# ## Set the parameters for the QC ----------------------------------------
+# # Pick overload value. 
+# # QE suggestion: 5e8
+# max.height <- 5.0e8
+# 
+# # Pick the minimum height to be counted as a 'real' peak.
+# # QE suggestion: HILIC - 1000, Cyano - 5000
+# min.height <- 1000
+# 
+# # Pick retention time (RT) flexibility.
+# # QE suggestion: +/- 0.4 min for HILIC, +/- 0.2 min for Cyano. 
+# RT.flex <- 0.4
+# 
+# # Pick signal size comparison between sample and blank to merit inclusion.
+# # QE suggestion: +/- 20%
+# blk.thresh <- 0.5
+# 
+# # Pick acceptable signal to noise ratio value. Note: broader peaks create more background noise.
+# # QE suggestion: 5 for Cyano, 4 for HILIC. Negotiable.
+# SN.thresh <- 4
+# 
+# # Pick an absolute value for a cutoff for parts per million (ppm)
+# # QE suggestion: 7
+# ppm.thresh <- 7
 
 # 
 # ## ID run types ---------------------------
