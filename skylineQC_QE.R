@@ -125,43 +125,36 @@ sapply(areas.raw.noIS[-1], class)
 print(before, after)
 
 
-# Might not need these?
-# stdRows <- areas.raw.noIS$sample.type == "std"
-# blkRows <- areas.raw.noIS$sample.type == "blk"
-#
-# areas.split <- split(areas.raw.noIS, areas.raw.noIS$sample.type)
-#
-# run.type.options <- names(areas.split)
-#
-# # # Might not need this either?
-# # cmpd.blk.list <- split(areas.split[["blk"]],
-# #                        areas.split[["blk"]]$Precursor.Ion.Name)
-#
-# ## Check the range of Retention Times and ion ratio in Standards ---------------------
-# # Range of Retention Times (RTs) and pooled sample inclusion
-#
-#
-# RT.range <- sapply(split(areas.split[["std"]]$Retention.Time,
-#                          areas.split[["std"]]$Precursor.Ion.Name),
-#                          range, na.rm = T)
-#
-# blk.range <- sapply(split(areas.split[["blk"]]$Area,
-#                           areas.split[["blk"]]$Precursor.Ion.Name),
-#                           range, na.rm = T)
-#
-# samp.data <- areas.split[["smp"]]
-# blank.data <- areas.split[["blk"]]
-#
-# # If there are pooled samples, include them in the 'sample' list so only blanks and standards are excluded.
-# if (any(run.type.options == "poo")) {
-#      poo.data <- areas.split[["poo"]]
-#      samp.data <- rbind(samp.data, poo.data)
-# }
-#
-# cmpds <- unique(samp.data$Precursor.Ion.Name)
-# samples <- unique(samp.data$Replicate.Name)
-# cmpd.samp.dfs <- split(samp.data, samp.data$Precursor.Ion.Name)
-#
+areas.split <- split(areas.raw.noIS, areas.raw.noIS$sample.type)
+
+run.type.options <- names(areas.split)
+
+
+## Check the range of Retention Times and ion ratio in Standards ---------------------
+# Range of Retention Times (RTs) and pooled sample inclusion
+
+
+RT.range <- sapply(split(areas.split[["std"]]$Retention.Time,
+                         areas.split[["std"]]$Precursor.Ion.Name),
+                         range, na.rm = T)
+
+blk.range <- sapply(split(areas.split[["blk"]]$Area,
+                          areas.split[["blk"]]$Precursor.Ion.Name),
+                          range, na.rm = T)
+
+samp.data <- areas.split[["smp"]]
+blank.data <- areas.split[["blk"]]
+
+# If there are pooled samples, include them in the 'sample' list so only blanks and standards are excluded.
+if (any(run.type.options == "poo")) {
+     poo.data <- areas.split[["poo"]]
+     samp.data <- rbind(samp.data, poo.data)
+}
+
+cmpds <- unique(samp.data$Precursor.Ion.Name)
+samples <- unique(samp.data$Replicate.Name)
+cmpd.samp.dfs <- split(samp.data, samp.data$Precursor.Ion.Name)
+
 # # ## RT range matrix ------------------------------
 # # RT.ok <- RT.range
 # # RT.ok[1, ] <- RT.range[1, ] - RT.flex
