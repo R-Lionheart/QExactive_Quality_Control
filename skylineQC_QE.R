@@ -84,7 +84,7 @@ main <- function() {
 
   raw_file = get_filtered_data(filename)
   ID_runtypes(raw_file)
-  #change_variables(raw_file)
+  change_variables(raw_file)
 }
 
 get_filtered_data <- function(filename) {
@@ -104,32 +104,31 @@ get_filtered_data <- function(filename) {
 ID_runtypes <- function(raw_file) {
   run.type <- as.factor(tolower(str_extract(raw_file$Replicate.Name, "(?<=_)[^_]+(?=_)")))
   raw_file[ , "Sample.Type"] <- run.type
+  print("New column of run types:", quote = FALSE)
   print(head(run.type))
 }
 
-ls(envir = skyline_env)
 
-main()
+## Change variable types ---------------------------------------------------
+change_variables <- function(raw_file) {
+  before <- lapply(raw_file[-1], class)
+  print("Original class variables ", quote = FALSE)
+  print(paste(colnames(raw_file)[-1], ",", before))
 
-# Change variable types ---------------------------------------------------
-# change_variables <- function(raw_file) {
-#   before <- sapply(raw_file[-1], class)
-#   print(before)
-# 
-#   raw_file$Precursor.Ion.Name <- as.factor(raw_file$Precursor.Ion.Name)
-#   cols.to.change <- c(7:9, 12)
-#   raw_file[cols.to.change] <- sapply(raw_file[cols.to.change], as.numeric)
-# 
-#   after <- sapply(raw_file[-1], class)
-#   print(before, after)
-# }
+  raw_file$Precursor.Ion.Name <- as.factor(raw_file$Precursor.Ion.Name)
+  cols.to.change <- c(7:9, 12)
+  raw_file[cols.to.change] <- lapply(raw_file[cols.to.change], as.numeric)
 
+  after <- lapply(raw_file[-1], class)
+  print("New class variables ", quote = FALSE)
+  print(paste(colnames(raw_file)[-1], ",", after))
+}
 
 
 
-# ## Check the range of Retention Times and ion ratio in Standards ---------------------
-# # Range of Retention Times (RTs) and pooled sample inclusion
-# 
+## Check the range of Retention Times and ion ratio in Standards ---------------------
+# Range of Retention Times (RTs) and pooled sample inclusion
+
 # areas.split <- split(areas.raw.noIS, areas.raw.noIS$sample.type)
 # run.type.options <- names(areas.split)
 # 
@@ -148,9 +147,11 @@ main()
 # 
 # cmpds <- unique(samp.data$Precursor.Ion.Name)
 # cmpd.samp.dfs <- split(samp.data, samp.data$Precursor.Ion.Name)
-# 
-# 
-# 
+
+
+main()
+
+
 # # ## RT range matrix ------------------------------
 # RT.ok <- RT.range
 # RT.ok[1, ] <- RT.range[1, ] - RT.flex
