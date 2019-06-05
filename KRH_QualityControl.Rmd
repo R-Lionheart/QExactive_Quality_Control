@@ -12,7 +12,7 @@ library(tidyverse)
 ```
 
 #Set your datafiles
-```{r, error = FALSE, warning=FALSE, message=FALSE}
+```{r, error = FALSE, warning = FALSE, message = FALSE}
 #Read in your output from Skyline
 Datfile1 <- "./datafiles/HILICPos_DiatomBatch1_SkylineExport.csv"
 

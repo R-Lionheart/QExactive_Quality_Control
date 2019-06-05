@@ -72,7 +72,8 @@ transform_variables <- function(area.data) {
   print(paste(colnames(area.data)[-1], ":", before))
   
   area.data$Precursor.Ion.Name <- as.factor(area.data$Precursor.Ion.Name)
-  grep(c("Area", "Retention.Time", "Background,", "Height", "Mass.Error.PPM"), colnames(area.data))
+  to.Match <- grep("Area|Retention.Time|Backgound|Height|Mass.Error.PPM", area.data) 
+  cols.to.change <- grep(to.Match, colnames(area.data))
   #cols.to.change <- c(7:9, 12)
   area.data[cols.to.change] <- lapply(area.data[cols.to.change], as.numeric)
   
