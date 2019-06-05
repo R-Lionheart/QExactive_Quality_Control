@@ -53,25 +53,25 @@ main <- function() {
     stop("Please enter a csv of Skyline output.")
   }
 
-  cat("Pick an overload value (QE suggestion: 5.0e8): ");
-  max.height <- readLines("stdin", n = 1);
-  cat("Pick the minimum height to be counted as a 'real' peak (QE suggestion: HILIC - 1000, Cyano - 5000): " );
-  min.height <- readLines("stdin", n = 1);
-  cat("Pick retention time (RT) flexibility (QE suggestion: +/- 0.4 min for HILIC, +/- 0.2 min for Cyano): ")
-  RT.flex <- readLines("stdin", n = 1);
-  cat("Pick signal size comparison between sample and blank to merit inclusion (QE suggestion: +/- 20%): ")
-  blk.thresh <- readLines("stdin", n = 1);
-  cat("Pick acceptable signal to noise ratio value. Note: broader peaks create more background noise(QE suggestion: 5 for Cyano, 4 for HILIC. Negotiable.): ")
-  SN.thresh <- readLines("stdin", n = 1);
-  cat("Pick an absolute value for a cutoff for parts per million (ppm) (QE suggestion: 7): ")
-  ppm.thresh <- readLines("stdin", n = 1);
-
-  cat("Your max height value is:", max.height, "\n")
-  cat("Your minimum height value is:", min.height, "\n")
-  cat("Your retention time flexibility value is:", RT.flex, "\n")
-  cat("Your blank threshold value is:", blk.thresh, "\n")
-  cat("Your signal to noise ratio value is:", SN.thresh, "\n")
-  cat("Your parts per million value is:", ppm.thresh, "\n")
+  # cat("Pick an overload value (QE suggestion: 5.0e8): ");
+  # max.height <- readLines("stdin", n = 1);
+  # cat("Pick the minimum height to be counted as a 'real' peak (QE suggestion: HILIC - 1000, Cyano - 5000): " );
+  # min.height <- readLines("stdin", n = 1);
+  # cat("Pick retention time (RT) flexibility (QE suggestion: +/- 0.4 min for HILIC, +/- 0.2 min for Cyano): ")
+  # RT.flex <- readLines("stdin", n = 1);
+  # cat("Pick signal size comparison between sample and blank to merit inclusion (QE suggestion: +/- 20%): ")
+  # blk.thresh <- readLines("stdin", n = 1);
+  # cat("Pick acceptable signal to noise ratio value. Note: broader peaks create more background noise(QE suggestion: 5 for Cyano, 4 for HILIC. Negotiable.): ")
+  # SN.thresh <- readLines("stdin", n = 1);
+  # cat("Pick an absolute value for a cutoff for parts per million (ppm) (QE suggestion: 7): ")
+  # ppm.thresh <- readLines("stdin", n = 1);
+  # 
+  # cat("Your max height value is:", max.height, "\n")
+  # cat("Your minimum height value is:", min.height, "\n")
+  # cat("Your retention time flexibility value is:", RT.flex, "\n")
+  # cat("Your blank threshold value is:", blk.thresh, "\n")
+  # cat("Your signal to noise ratio value is:", SN.thresh, "\n")
+  # cat("Your parts per million value is:", ppm.thresh, "\n")
 
   cat("Ready to move on? (Y/N):" );
   answer <- readLines("stdin", n = 1);
@@ -82,9 +82,10 @@ main <- function() {
     break
   }
 
-  raw_file = get_filtered_data(filename)
-  ID_runtypes(raw_file)
-  change_variables(raw_file)
+  raw_areas <- get_filtered_data(filename)
+  new_variable_classes <- identify_runtypes(raw_areas)
+  #change_variables()
+  #areas.split <- split_raw_data()
 }
 
 get_filtered_data <- function(filename) {
@@ -101,52 +102,56 @@ get_filtered_data <- function(filename) {
 
 ## Identify run types ---------------------------
 # Standards (std), Samples (smp), Blanks (blk), Pooled (poo)
-ID_runtypes <- function(raw_file) {
-  run.type <- as.factor(tolower(str_extract(raw_file$Replicate.Name, "(?<=_)[^_]+(?=_)")))
-  raw_file[ , "Sample.Type"] <- run.type
+identify_runtypes <- function(raw_areas) {
+  run.type <- as.factor(tolower(str_extract(raw_areas$Replicate.Name, "(?<=_)[^_]+(?=_)")))
+  raw_areas[ , "Sample.Type"] <- run.type
   print("New column of run types:", quote = FALSE)
   print(head(run.type))
+  return(raw_areas_w_runtypes)
 }
+
 
 
 ## Change variable types ---------------------------------------------------
-change_variables <- function(raw_file) {
-  before <- lapply(raw_file[-1], class)
-  print("Original class variables ", quote = FALSE)
-  print(paste(colnames(raw_file)[-1], ",", before))
 
-  raw_file$Precursor.Ion.Name <- as.factor(raw_file$Precursor.Ion.Name)
-  cols.to.change <- c(7:9, 12)
-  raw_file[cols.to.change] <- lapply(raw_file[cols.to.change], as.numeric)
+# before <- lapply(raw_areas[-1], class)
+# print("Original class variables ", quote = FALSE)
+# print(paste(colnames(raw_areas)[-1], ":", before))
+# 
+# raw_areas$Precursor.Ion.Name <- as.factor(raw_areas$Precursor.Ion.Name)
+# cols.to.change <- c(7:9, 12)
+# raw_areas[cols.to.change] <- lapply(raw_areas[cols.to.change], as.numeric)
+# 
+# after <- lapply(raw_areas[-1], class)
+# print("New class variables ", quote = FALSE)
+# print(paste(colnames(raw_areas)[-1], ":", after))
 
-  after <- lapply(raw_file[-1], class)
-  print("New class variables ", quote = FALSE)
-  print(paste(colnames(raw_file)[-1], ",", after))
-}
 
 
 
 ## Check the range of Retention Times and ion ratio in Standards ---------------------
 # Range of Retention Times (RTs) and pooled sample inclusion
 
-# areas.split <- split(areas.raw.noIS, areas.raw.noIS$sample.type)
+# split_raw_data <- function(raw_areas) {
+#   areas.split <- split(raw_areas, raw_areas$Sample.Type)
+#   return(areas.split)
+#   print(head(areas.split))
+# }
 # run.type.options <- names(areas.split)
-# 
-# 
 # RT.range <- sapply(split(areas.split[["std"]]$Retention.Time,
 #                          areas.split[["std"]]$Precursor.Ion.Name),
-#                          range, na.rm = T)
+#                    range, na.rm = T)
 # 
 # blk.range <- sapply(split(areas.split[["blk"]]$Area,
 #                           areas.split[["blk"]]$Precursor.Ion.Name),
-#                           range, na.rm = T)
+#                     range, na.rm = T)
 # 
 # samp.data <- rbind(areas.split[["smp"]], areas.split[["poo"]])
 # blank.data <- areas.split[["blk"]]
 # 
 # 
 # cmpds <- unique(samp.data$Precursor.Ion.Name)
-# cmpd.samp.dfs <- split(samp.data, samp.data$Precursor.Ion.Name)
+# cmpd.samp.dfs <- split(samp.data, samp.data$Precursor.Ion.Name)  
 
 
 main()
