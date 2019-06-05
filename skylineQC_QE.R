@@ -61,22 +61,23 @@ identify_runtypes <- function(area.data) {
   run.type <- as.factor(tolower(str_extract(area.data$Replicate.Name, "(?<=_)[^_]+(?=_)")))
   area.data[ , "Sample.Type"] <- run.type
   print("New column of run types:", quote = FALSE)
-  print(head(run.type))
+  print(head(run.type, n = 20))
   return(area.data)
 }
 
 ## Change variable types ---------------------------------------------------
 transform_variables <- function(area.data) {
   before <- lapply(area.data[-1], class)
-  print("Original class variables ", quote = FALSE)
+  print("Original variable classes ", quote = FALSE)
   print(paste(colnames(area.data)[-1], ":", before))
   
   area.data$Precursor.Ion.Name <- as.factor(area.data$Precursor.Ion.Name)
-  cols.to.change <- c(7:9, 12)
+  grep(c("Area", "Retention.Time", "Background,", "Height", "Mass.Error.PPM"), colnames(area.data))
+  #cols.to.change <- c(7:9, 12)
   area.data[cols.to.change] <- lapply(area.data[cols.to.change], as.numeric)
   
   after <- lapply(area.data[-1], class)
-  print("New class variables ", quote = FALSE)
+  print("New variable classes ", quote = FALSE)
   print(paste(colnames(area.data)[-1], ":", after))
 
   return(area.data)
@@ -134,7 +135,7 @@ RT.range <- sapply(split(areas.split[["std"]]$Retention.Time,
                          areas.split[["std"]]$Precursor.Ion.Name),
                          range, na.rm = T)
 
-blank.range <- sapply(split(areas.split[["blk"]]$Area,
+blank.range <- sapply(split(areas.split[["blk"]]$Area,œœœ
                           areas.split[["blk"]]$Precursor.Ion.Name),
                           range, na.rm = T)
 
@@ -147,12 +148,11 @@ cmpd.samp.dfs <- split(samp.data, samp.data$Precursor.Ion.Name)
 
 
 ## RT range matrix ------------------------------
-
 RT.ok <- RT.range
 RT.ok[1, ] <- RT.range[1, ] - RT.flex
 RT.ok[2, ] <- RT.range[2, ] + RT.flex
 
-# Get the sample RTs
+# Get the sample RTs, new
 RT.matrix <- c()
 for (i in 1:length(cmpds)) {
   RT <- sapply(split(cmpd.samp.dfs[[cmpds[i]]]$Retention.Time,
@@ -171,11 +171,10 @@ samp.data$S.N <- ((samp.data$Area + samp.data$Background) / samp.data$Background
 
 output <- full_join(output, samp.data[, c("Replicate.Name", "Precursor.Ion.Name",
                                           "Area", "Height", "Background",
-                                          #"Mass.Error.PPM", 
-                                          "S.N")],
+                                          "Mass.Error.PPM", "S.N")],
                     by = c("Replicate.Name", "Compound.Name" = "Precursor.Ion.Name"))
 output <- output %>%
-  #rename(ppm = Mass.Error.PPM) %>%
+  rename(ppm = Mass.Error.PPM) %>%
   mutate(Notes = "",
          rawArea = Area,
          AreaBlkSub = Area,
@@ -209,12 +208,12 @@ for (i in 1:nrow(output)) {
 
 ## Parts per million check -----------------------------------------------
 # If ppm is greater than threshold, throw it out!
-# for (i in 1:nrow(output)) {
-#   if (!is.na(output$ppm[i]) & abs(output$ppm[i]) > ppm.thresh) {
-#     output$Notes[i] <- paste(output$Notes[i], "bad ppm", sep = "")
-#     output$Area[i] <- NA
-#   }
-# }
+for (i in 1:nrow(output)) {
+  if (!is.na(output$ppm[i]) & abs(output$ppm[i]) > ppm.thresh) {
+    output$Notes[i] <- paste(output$Notes[i], "bad ppm", sep = "")
+    output$Area[i] <- NA
+  }
+}
 
 ## Blank check -----------------------------------------------
 # If area is not much greater than blank, throw it out!
@@ -266,7 +265,7 @@ blank.data$Compound.Name <- blank.data$Precursor.Ion.Name
 blank.data$Notes         <- rep("Blank used for comparison", nrow(blank.data))
 blank.data$S.N           <- (blank.data$Area+blank.data$Background) / blank.data$Background
 blank.data$rawArea       <- blank.data$Area
-#blank.data$ppm           <- blank.data$Mass.Error.PPM
+blank.data$ppm           <- blank.data$Mass.Error.PPM
 blank.data$Compound.Type <- blank.data$Protein.Name
 blank.data$AreaBlkSub    <- blank.data$Area
 blank.data$BlkRatio      <- NA
@@ -275,15 +274,15 @@ final.output             <- rbind(output, blank.data[, colnames(output)])
 
 ## Output with comment-------------------------
 # Ion name, area, was a peak removed?
-comment.text <- paste("# Hello! welcome to your data! ", "Overload height: ",
-                      max.height, ". ", "RT flexibility: ", RT.flex, ". ",
-                      "Blank can be this fraction of a sample: ",blk.thresh, ". ",
-                      "S/N threshold: " , SN.thresh, ". ",
-                      "Minimum peak height: ", min.height, ". ",
-                      "Processed on: ", Sys.time(), sep = "")
-
-new.filename <- paste("QEQC_output", sep = "")
-con <- file(new.filename, open = "wt")
-writeLines(paste(comment.text), con)
-write.csv(final.output, con)
-close(con)
+# comment.text <- paste("# Hello! welcome to your data! ", "Overload height: ",
+#                       max.height, ". ", "RT flexibility: ", RT.flex, ". ",
+#                       "Blank can be this fraction of a sample: ",blk.thresh, ". ",
+#                       "S/N threshold: " , SN.thresh, ". ",
+#                       "Minimum peak height: ", min.height, ". ",
+#                       "Processed on: ", Sys.time(), sep = "")
+# 
+# new.filename <- paste("QEQC_output", sep = "")
+# con <- file(new.filename, open = "wt")
+# writeLines(paste(comment.text), con)
+# write.csv(final.output, con)
+# close(con)

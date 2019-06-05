@@ -1,0 +1,108 @@
+---
+title: "Quality Control on BALK culture data"
+author: "Katherine Heal"
+date: "May 22, 2019"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(dev = 'pdf')
+library(tidyverse)
+```
+
+#Set your datafiles
+```{r, error = FALSE, warning=FALSE, message=FALSE}
+#Read in your output from Skyline
+Datfile1 <- "./datafiles/HILICPos_DiatomBatch1_SkylineExport.csv"
+
+#Read in a csv that has which samples go to which blanks
+BlankMatcherFile <- "./datafiles/Samps_with_Blanks.csv"
+
+#Set your flag to find standards to base RT off of
+StdFlag <- c("170410_Smp_KM1513-15m_A", "180702_Smp_S7E41D30_1")
+
+#Set your parameters
+SNmin = 3
+ppmflex = 6
+Areamin = 20000
+
+RTflex = 2
+BlankRatiomax = 5
+```
+
+Read in data, flags for Signal:Noise, ppm, minimum area.
+Next, flag for Retention Time being off of standards
+```{r, error = FALSE, warning=FALSE, message=FALSE}
+#Says which are blanks and which are samples
+BlankMatcher <- read_csv(BlankMatcherFile)
+
+#First do easy flags - SN, ppm, Areamin
+Datorig <- read.csv(Datfile1) %>%
+  select(-Protein.Name, -Protein) %>%
+  mutate(Retention.Time = as.numeric(as.character(Retention.Time))) %>%
+  mutate(Area = as.numeric(as.character(Area))) %>%
+  mutate(Background = as.numeric(as.character(Background))) %>%
+  mutate(Mass.Error.PPM = as.numeric(as.character(Mass.Error.PPM))) 
+
+Dat1 <- Datorig %>%
+  filter(Replicate.Name %in% BlankMatcher$Replicate.Name) %>%
+  mutate(SNFlag = ifelse((Area/Background < SNmin), "SNFlag", NA)) %>%
+  mutate(ppmFlag = ifelse((Mass.Error.PPM > ppmflex), "ppmFlag", NA)) %>%
+  mutate(areaminFlag = ifelse((Area < Areamin), "areaminFlag", NA))
+
+#Next do RT flag compared to standard or a template
+RT_of_Stds <- Datorig %>%
+  filter(Replicate.Name %in% StdFlag) %>%
+  select(Precursor.Ion.Name, Retention.Time) %>%
+  group_by(Precursor.Ion.Name) %>%
+  summarise(RT_ref = mean((Retention.Time), na.rm = TRUE))
+
+Dat2 <- Dat1 %>%
+  left_join(RT_of_Stds) %>%
+  mutate(Retention.Time = as.numeric(as.character(Retention.Time))) %>%
+  mutate(RTFlag = ifelse((abs(Retention.Time - RT_ref) > RTflex), "RTFlag", NA))
+
+#Next do Blank flag compared to blank
+Area_of_Blanks <- Datorig %>%
+  filter(Replicate.Name %in% BlankMatcher$Blank.Name) %>%
+  rename(Blank.Name = Replicate.Name,
+         Blank.Area = Area) %>%
+  select(Blank.Name, Precursor.Ion.Name, Blank.Area) %>%
+  left_join(BlankMatcher) %>% select(-Blank.Name)
+
+Dat3 <- Dat2 %>%
+  left_join(Area_of_Blanks) %>%
+  mutate(BlankFlag = ifelse(Area/Blank.Area < BlankRatiomax, "BlankFlag", NA))
+
+#Finally, combine all the flags and throw out any peak with a flag
+Dat4 <- Dat3 %>%
+  mutate(Flags = paste(SNFlag, ppmFlag, areaminFlag, RTFlag, BlankFlag, sep = ", ")) %>%
+  mutate(Flags = as.character(Flags %>% str_remove_all("NA, ") %>%  str_remove_all("NA"))) %>%
+  mutate(QC_area = ifelse(str_detect(Flags, "Flag"), NA, Area))
+
+
+write.csv(Dat4, "QCoutput.csv")
+
+
+#To inspect
+Dat5 <- Dat4 %>%
+  select(Precursor.Ion.Name, Replicate.Name, Flags, QC_area)
+  
+  
+```
+
+## Output with: comment -------------------------
+## Ion name, area, was a peak removed?
+comment.text <- paste("# Hello! welcome to your data! ","Overload height: ", 
+                      max.height, ". ", "RT flexibility: ", RT.flex, ". ",
+                      "Blank can be this fraction of a sample: ",blk.thresh, ". ", 
+                      "S/N threshold: " , SN.thresh, ". ",
+                      "Minimum peak height: ", min.height, ". ",
+                      "Processed on: ", Sys.time(), sep="")
+new.filename <- paste("QEQC_output",filename,sep="")
+con <- file(new.filename, open="wt")
+writeLines(paste(comment.text), con)
+write.csv(final.output, con)
+close(con)
+
