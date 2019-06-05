@@ -11,18 +11,18 @@ knitr::opts_chunk$set(dev = 'pdf')
 library(tidyverse)
 ```
 
-#Set your datafiles
+Set your datafiles
 ```{r, error = FALSE, warning = FALSE, message = FALSE}
-#Read in your output from Skyline
+# Read in your output from Skyline
 Datfile1 <- "./datafiles/HILICPos_DiatomBatch1_SkylineExport.csv"
 
-#Read in a csv that has which samples go to which blanks
+# Read in a csv that has which samples go to which blanks
 BlankMatcherFile <- "./datafiles/Samps_with_Blanks.csv"
 
-#Set your flag to find standards to base RT off of
+# Set your flag to find standards to base RT off of
 StdFlag <- c("170410_Smp_KM1513-15m_A", "180702_Smp_S7E41D30_1")
 
-#Set your parameters
+# Set your parameters
 SNmin = 3
 ppmflex = 6
 Areamin = 20000
@@ -34,10 +34,10 @@ BlankRatiomax = 5
 Read in data, flags for Signal:Noise, ppm, minimum area.
 Next, flag for Retention Time being off of standards
 ```{r, error = FALSE, warning=FALSE, message=FALSE}
-#Says which are blanks and which are samples
+# Says which are blanks and which are samples
 BlankMatcher <- read_csv(BlankMatcherFile)
 
-#First do easy flags - SN, ppm, Areamin
+# First do easy flags - SN, ppm, Areamin
 Datorig <- read.csv(Datfile1) %>%
   select(-Protein.Name, -Protein) %>%
   mutate(Retention.Time = as.numeric(as.character(Retention.Time))) %>%
@@ -51,7 +51,7 @@ Dat1 <- Datorig %>%
   mutate(ppmFlag = ifelse((Mass.Error.PPM > ppmflex), "ppmFlag", NA)) %>%
   mutate(areaminFlag = ifelse((Area < Areamin), "areaminFlag", NA))
 
-#Next do RT flag compared to standard or a template
+# Next do RT flag compared to standard or a template
 RT_of_Stds <- Datorig %>%
   filter(Replicate.Name %in% StdFlag) %>%
   select(Precursor.Ion.Name, Retention.Time) %>%
@@ -63,7 +63,7 @@ Dat2 <- Dat1 %>%
   mutate(Retention.Time = as.numeric(as.character(Retention.Time))) %>%
   mutate(RTFlag = ifelse((abs(Retention.Time - RT_ref) > RTflex), "RTFlag", NA))
 
-#Next do Blank flag compared to blank
+# Next do Blank flag compared to blank
 Area_of_Blanks <- Datorig %>%
   filter(Replicate.Name %in% BlankMatcher$Blank.Name) %>%
   rename(Blank.Name = Replicate.Name,
@@ -75,7 +75,7 @@ Dat3 <- Dat2 %>%
   left_join(Area_of_Blanks) %>%
   mutate(BlankFlag = ifelse(Area/Blank.Area < BlankRatiomax, "BlankFlag", NA))
 
-#Finally, combine all the flags and throw out any peak with a flag
+# Finally, combine all the flags and throw out any peak with a flag
 Dat4 <- Dat3 %>%
   mutate(Flags = paste(SNFlag, ppmFlag, areaminFlag, RTFlag, BlankFlag, sep = ", ")) %>%
   mutate(Flags = as.character(Flags %>% str_remove_all("NA, ") %>%  str_remove_all("NA"))) %>%
@@ -85,7 +85,7 @@ Dat4 <- Dat3 %>%
 write.csv(Dat4, "QCoutput.csv")
 
 
-#To inspect
+# To inspect
 Dat5 <- Dat4 %>%
   select(Precursor.Ion.Name, Replicate.Name, Flags, QC_area)
   

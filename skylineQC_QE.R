@@ -32,6 +32,7 @@
 # TODO (rlionheart): Is ppm parts per million?
 # TODO (rlionheart): When creating int.stds.data, should the filter parameter be a regex to account for various inputs indicating internal standards?
 # TODO (rlionheart): No Mass.Error.PPM column to add to areas.raw.noIS? Also presents problems in lines 167 - 178.
+# TODO (rlionheart): Figure out how to interactively enter columns that need variable changes (locations may change!)
 
 # TODO (lionhearts): What specifically is happening in the ID run type section, as well as the RT.matrix section? 
 # TODO (lionhearts): Where is the range coming from in RT.range under Range of Retention Times?
@@ -68,22 +69,20 @@ identify_runtypes <- function(area.data) {
 ## Change variable types ---------------------------------------------------
 transform_variables <- function(area.data) {
   before <- lapply(area.data[-1], class)
-  print("Original variable classes ", quote = FALSE)
+  print("Original class variables ", quote = FALSE)
   print(paste(colnames(area.data)[-1], ":", before))
   
   area.data$Precursor.Ion.Name <- as.factor(area.data$Precursor.Ion.Name)
-  to.Match <- grep("Area|Retention.Time|Backgound|Height|Mass.Error.PPM", area.data) 
-  cols.to.change <- grep(to.Match, colnames(area.data))
-  #cols.to.change <- c(7:9, 12)
+  cols.to.change <- c(4,5,6,8)
   area.data[cols.to.change] <- lapply(area.data[cols.to.change], as.numeric)
   
   after <- lapply(area.data[-1], class)
-  print("New variable classes ", quote = FALSE)
+  print("New class variables ", quote = FALSE)
   print(paste(colnames(area.data)[-1], ":", after))
-
+  
   return(area.data)
 }
- 
+
 
 args <- commandArgs(trailingOnly = TRUE)
 filename <- args[1]
@@ -132,11 +131,11 @@ areas.split <- split(areas.transformed, areas.transformed$Sample.Type)
 ## Check the range of Retention Times and ion ratio in Standards ---------------------
 # Range of Retention Times (RTs) and pooled sample inclusion
 
-RT.range <- sapply(split(areas.split[["std"]]$Retention.Time,
+RT.range <- lapply(split(areas.split[["std"]]$Retention.Time,
                          areas.split[["std"]]$Precursor.Ion.Name),
                          range, na.rm = T)
 
-blank.range <- sapply(split(areas.split[["blk"]]$Area,œœœ
+blank.range <- lapply(split(areas.split[["blk"]]$Area,
                           areas.split[["blk"]]$Precursor.Ion.Name),
                           range, na.rm = T)
 
@@ -275,15 +274,15 @@ final.output             <- rbind(output, blank.data[, colnames(output)])
 
 ## Output with comment-------------------------
 # Ion name, area, was a peak removed?
-# comment.text <- paste("# Hello! welcome to your data! ", "Overload height: ",
-#                       max.height, ". ", "RT flexibility: ", RT.flex, ". ",
-#                       "Blank can be this fraction of a sample: ",blk.thresh, ". ",
-#                       "S/N threshold: " , SN.thresh, ". ",
-#                       "Minimum peak height: ", min.height, ". ",
-#                       "Processed on: ", Sys.time(), sep = "")
-# 
-# new.filename <- paste("QEQC_output", sep = "")
-# con <- file(new.filename, open = "wt")
-# writeLines(paste(comment.text), con)
-# write.csv(final.output, con)
-# close(con)
+comment.text <- paste("# Hello! welcome to your data! ", "Overload height: ",
+                      max.height, ". ", "RT flexibility: ", RT.flex, ". ",
+                      "Blank can be this fraction of a sample: ",blk.thresh, ". ",
+                      "S/N threshold: " , SN.thresh, ". ",
+                      "Minimum peak height: ", min.height, ". ",
+                      "Processed on: ", Sys.time(), sep = "")
+
+new.filename <- paste("QEQC_output", filename, sep = "")
+con <- file(new.filename, open = "wt")
+writeLines(paste(comment.text), con)
+write.csv(final.output, con)
+close(con)
