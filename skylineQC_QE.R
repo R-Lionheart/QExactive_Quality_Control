@@ -46,6 +46,7 @@ library(stringr)
 library(tidyr)
 library(tidyverse)
 
+
 ## Filter out unnecessary compounds---------------------------
 filter_compounds <- function(area.data) {
   area.data %>%
@@ -90,7 +91,7 @@ filename <- args[1]
 if (length(filename) == 0) {
   stop("Please enter a csv of Skyline output.")
 }
-
+  
 cat("Pick an overload value (QE suggestion: 5.0e8): ");
 max.height <- as.double(readLines("stdin", n = 1));
 cat("Pick the minimum height to be counted as a 'real' peak (QE suggestion: HILIC - 1000, Cyano - 5000): " );
@@ -120,6 +121,7 @@ if (regexpr(answer, 'y', ignore.case = TRUE) == 1) {
  cat("Ok, let's try again!")
  break
 }
+
 
 areas.raw <- read.csv(file = filename, header = TRUE, na.strings = "#N/A", stringsAsFactors = F)
 areas.filtered <- filter_compounds(areas.raw)
