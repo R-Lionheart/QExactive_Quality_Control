@@ -1,6 +1,12 @@
 library(rlist)
 library(tidyverse)
 
+# This script is intended to be used for .csv files output from Skyline (https://skyline.ms/project/home/begin.view?).
+# Run using the command line. When in the proper directory, enter Rscript <this script> <skyline output csv> <blank sample matching csv>
+# The script will then guide you through the steps to obtaining your results, filtered for quality control!
+
+# TODO (kheal): Anything to add in the general description?
+
 args <- commandArgs(trailingOnly = TRUE)
 filename1 <- args[1]
 filename2 <- args[2]
@@ -9,9 +15,10 @@ if (filename1 == 0 | filename2 == 0) {
   stop("Please enter a csv of Skyline output and sample blanks to compare.")
 }
 
-machine.output <- read.csv(file = filename1)
+skyline.output <- read.csv(file = filename1)
 blank.matcher <- read.csv(file = filename2)
 
+## Set parameters for quality control.
 cat("Pick the minimum height to be counted as a 'real' peak (QE suggestion: HILIC - 1000, Cyano - 5000): " )
 Areamin <- as.double(readLines("stdin", n = 1))
 cat("Pick retention time (RT) flexibility (QE suggestion: +/- 0.4 min for HILIC, +/- 0.2 min for Cyano): ")
@@ -32,7 +39,6 @@ cat("Your parts per million value is:", ppmflex, "\n")
 cat("Ready to move on? (Y/N):" )
 answer <- readLines("stdin", n = 1)
 
-# TODO (lionhearts) 
 if (regexpr(answer, 'y', ignore.case = TRUE) == 1) {
   continue = TRUE
 } else if (regexpr(answer, 'n', ignore.case = TRUE) == 1) {
@@ -41,52 +47,65 @@ if (regexpr(answer, 'y', ignore.case = TRUE) == 1) {
 }
 
 # TODO (lionhearts)
-
+random.sample <- function(x) {
+  repeat {
+    # do something
+    i <- sample(nrow(df), 1)
+    x <- df[sample(nrow(df), 1), ]
+    # exit if the condition is met
+    if (x$SCORE > 0) break
+  }
+  return(x)
+}
 
 std_flag_input <- function() {
-  last_one <- readlines("stdin", n = 1)
-  StdFlags = list()
-  while(last_one != 'y') {
-    n <- cat(prompt = "Sample flag: ")
-    StdFlags = c(StdFlags, n)
+  StdFlags <- list()
+  repeat {
+    cat("Sample flag (leave blank if finished): ")
+    flag <- readLines("stdin", n = 1);
+    if (flag == "") {
+      #print(StdFlags)
+      return(StdFlags)
+    }
+    StdFlags <- list.append(StdFlags, flag)
   }
-  if (regexpr(last_one, 'y', ignore.case = TRUE) == 1) {
-  } return (StdFlags)
 }
 
 std_flag_input()
 
-## Begin data processing here ----------------------------------------------
 
+# ## Begin data processing here ----------------------------------------------
+# 
 # ## Drop columns
-# drop_columns <- function(machine.output) {
-#   machine.output %>%
+# drop_columns <- function(skyline.output) {
+#   # Removes Protein Name and Protein columns from skyline output.
+#   skyline.output %>%
 #     select(-Protein.Name, -Protein)
 # 
-#   return(machine.output)
+#   return(skyline.output)
 # }
 # 
 # ## Transform variable classes
-# transform_variables <- function(machine.output) {
-#   before <- lapply(machine.output, class)
+# transform_variables <- function(skyline.output) {
+#   before <- lapply(skyline.output, class)
 #   print("Original class variables ", quote = FALSE)
-#   print(paste(colnames(machine.output), ":", before))
+#   print(paste(colnames(skyline.output), ":", before))
 # 
 #   mutate(Retention.Time = as.numeric(as.character(Retention.Time))) %>%
 #   mutate(Area = as.numeric(as.character(Area))) %>%
 #   mutate(Background = as.numeric(as.character(Background))) %>%
 #   mutate(Mass.Error.PPM = as.numeric(as.character(Mass.Error.PPM)))
 # 
-#   after <- lapply(machine.output, class)
+#   after <- lapply(skyline.output, class)
 #   print("New class variables ", quote = FALSE)
-#   print(paste(colnames(machine.output), ":", after))
+#   print(paste(colnames(skyline.output), ":", after))
 # 
-#   return(machine.output)
+#   return(skyline.output)
 # }
 # 
 # ## Create Signal to noise (SN), Parts per million (ppm), and Area minimum (areamin) flags. Add to dataset.
-# first_flags <- function(machine.output) {
-#   first_flags_added <- machine.output %>%
+# first_flags <- function(skyline.output) {
+#   first_flags_added <- skyline.output %>%
 #     filter(Replicate.Name %in% BlankMatcher$Replicate.Name) %>%
 #     mutate(SNFlag = ifelse((Area/Background < SNmin), "SNFlag", NA)) %>%
 #     mutate(ppmFlag = ifelse((Mass.Error.PPM > ppmflex), "ppmFlag", NA)) %>%
@@ -96,8 +115,8 @@ std_flag_input()
 # }
 # 
 # ## Create dataset with Retention Time (RT) flags, when compared to a standard or template.
-# RT_flags <- function(machine.output) {
-#   Retention <- machine.output %>%
+# RT_flags <- function(skyline.output) {
+#   Retention <- skyline.output %>%
 #     filter(Replicate.Name %in% StdFlag) %>%
 #     select(Precursor.Ion.Name, Retention.Time) %>%
 #     group_by(Precursor.Ion.Name) %>%
@@ -107,8 +126,8 @@ std_flag_input()
 # }
 # 
 # ## Create dataset with blank flags
-# Blank_flags <- function(machine.output) {
-#   Area_of_Blanks <- machine.output %>%
+# Blank_flags <- function(skyline.output) {
+#   Area_of_Blanks <- skyline.output %>%
 #     filter(Replicate.Name %in% BlankMatcher$Blank.Name) %>%
 #     rename(Blank.Name = Replicate.Name,
 #            Blank.Area = Area) %>%
@@ -117,11 +136,11 @@ std_flag_input()
 # }
 # 
 # 
-# columns.dropped <- drop_columns(machine.output)
+# columns.dropped <- drop_columns(skyline.output)
 # classes.transformed <- transform_variables(columns.dropped)
-# SNPPMAM.flags.made <- first_flags(machine.output)
-# RT.flags.made <- RT_flags(machine.output)
-# Blank.flags.made <- Blank_flags(machine.output)
+# SNPPMAM.flags.made <- first_flags(skyline.output)
+# RT.flags.made <- RT_flags(skyline.output)
+# Blank.flags.made <- Blank_flags(skyline.output)
 # 
 # ## Join those datasets!
 # 
@@ -138,7 +157,7 @@ std_flag_input()
 #   mutate(BlankFlag = ifelse(Area/Blank.Area < BlankRatiomax, "BlankFlag", NA))
 # 
 # 
-# ##  Finally, combine all the flags and throw out any peak with a flag
+# ## Finally, combine all the flags and throw out any peak with a flag
 # last_join <- second_join %>%
 #   mutate(Flags = paste(SNFlag, ppmFlag, areaminFlag, RTFlag, BlankFlag, sep = ", ")) %>%
 #   mutate(Flags = as.character(Flags %>% str_remove_all("NA, ") %>%  str_remove_all("NA"))) %>%
