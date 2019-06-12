@@ -197,6 +197,8 @@ last.join <- second.join %>%
 
 
 # Print to file with comments and new name!`    `
+
+con <- file(paste("QEQC_", input.file), open = "wt")
 writeLines(paste("Hello! Welcome to the world of QE Quality Control! ",
                  "Minimum area for a real peak: ", area.min, ". ",
                  "RT flexibility: ", RT.flex, ". ",
@@ -209,3 +211,4 @@ writeLines(paste("Hello! Welcome to the world of QE Quality Control! ",
                  sep = ""), con)
 write.csv(last.join, con, row.names = FALSE)
 close(con)
+
